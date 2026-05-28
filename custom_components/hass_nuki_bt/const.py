@@ -18,3 +18,6 @@ CONF_PUBLIC_KEY = "public_key"
 CONF_DEVICE_PUBLIC_KEY = "device_public_key"
 CONF_APP_ID = "app_id"
 CONF_CLIENT_TYPE = "client_type"
+
+DEVICE_STARTUP_TIMEOUT = 300
+COMMAND_TIMEOUT = 60

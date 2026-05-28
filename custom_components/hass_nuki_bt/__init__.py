@@ -5,9 +5,12 @@ https://github.com/ludeeus/hass_nuki_bt
 """
 
 from __future__ import annotations
+import asyncio
+import contextlib
 import logging
 from asyncio import CancelledError, TimeoutError
 from bleak import BleakError
+import async_timeout
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform, CONF_NAME, CONF_PIN
@@ -19,6 +22,7 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from pyNukiBT import NukiDevice, NukiConst
 
 from .const import (
+    DEVICE_STARTUP_TIMEOUT,
     CONF_APP_ID,
     CONF_AUTH_ID,
     CONF_DEVICE_ADDRESS,
@@ -74,10 +78,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass, addr, connectable=True
         ),
     )
-    try:
-        await device.connect()
-    except (BleakError, CancelledError, TimeoutError) as ex:
-        _LOGGER.debug(ex)
+    connected = False
+    with contextlib.suppress(TimeoutError):
+        async with async_timeout.timeout(DEVICE_STARTUP_TIMEOUT):
+            while not connected:
+                try:
+                    await device.connect()
+                    connected = True
+                except (BleakError, CancelledError) as ex:
+                    _LOGGER.debug("Connection attempt failed, retrying: %s", ex)
+                    await asyncio.sleep(5)
+    if not connected:
         raise ConfigEntryNotReady(f"Could not connect to {address}")
 
     hass.data[DOMAIN][entry.entry_id] = coordinator = NukiDataUpdateCoordinator(

@@ -17,12 +17,12 @@ from homeassistant.components.bluetooth.active_update_coordinator import (
 from homeassistant.core import HomeAssistant, callback
 from pyNukiBT import NukiDevice, NukiConst
 
+from .const import DEVICE_STARTUP_TIMEOUT
+
 if TYPE_CHECKING:
     from bleak.backends.device import BLEDevice
 
 _LOGGER = logging.getLogger(__name__)
-
-DEVICE_STARTUP_TIMEOUT = 300
 
 
 class NukiDataUpdateCoordinator(ActiveBluetoothDataUpdateCoordinator[None]):
@@ -109,11 +109,12 @@ class NukiDataUpdateCoordinator(ActiveBluetoothDataUpdateCoordinator[None]):
         """Wait for the device to be ready."""
         with contextlib.suppress(asyncio.TimeoutError):
             async with async_timeout.timeout(DEVICE_STARTUP_TIMEOUT):
-                try:
-                    await self._async_update()
-                except BleakError:
-                    return False
-                return True
+                while True:
+                    try:
+                        await self._async_update()
+                        return True
+                    except BleakError:
+                        await asyncio.sleep(5)
         return False
 
     async def async_get_last_action_log_entry(self):

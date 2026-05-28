@@ -1,7 +1,13 @@
 """NukiEntity class."""
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import logging
+from asyncio import CancelledError, TimeoutError
+
+import async_timeout
+from bleak import BleakError
 
 from homeassistant.components.bluetooth.passive_update_coordinator import (
     PassiveBluetoothCoordinatorEntity,
@@ -12,7 +18,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity import DeviceInfo
 from pyNukiBT import NukiDevice
 
-from .const import MANUFACTURER
+from .const import MANUFACTURER, COMMAND_TIMEOUT
 from .coordinator import NukiDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -64,7 +70,15 @@ class NukiEntity(PassiveBluetoothCoordinatorEntity[NukiDataUpdateCoordinator]):
         """Do door action."""
         user = await self.hass.auth.async_get_user(self._context.user_id)
         user_name = user.name if user else None
-        await self.device.lock_action(action, name_suffix=user_name, wait_for_completed = True)
+        with contextlib.suppress(TimeoutError):
+            async with async_timeout.timeout(COMMAND_TIMEOUT):
+                while True:
+                    try:
+                        await self.device.lock_action(action, name_suffix=user_name, wait_for_completed=True)
+                        break
+                    except (BleakError, CancelledError) as ex:
+                        _LOGGER.debug("Command failed, retrying: %s", ex)
+                        await asyncio.sleep(5)
         await self.coordinator.async_get_last_action_log_entry()
         self.coordinator.async_update_listeners()
 
