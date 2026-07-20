@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import time
 from asyncio import CancelledError, TimeoutError
 from bleak import BleakError
 import async_timeout
@@ -79,15 +80,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         ),
     )
     connected = False
+    connect_attempt = 0
+    connect_start = time.monotonic()
     with contextlib.suppress(TimeoutError):
         async with async_timeout.timeout(DEVICE_STARTUP_TIMEOUT):
             while not connected:
+                connect_attempt += 1
+                _LOGGER.debug(
+                    "Connect attempt %d to %s (elapsed %.1fs)",
+                    connect_attempt, address, time.monotonic() - connect_start,
+                )
                 try:
                     await device.connect()
                     connected = True
                 except (BleakError, CancelledError) as ex:
-                    _LOGGER.debug("Connection attempt failed, retrying: %s", ex)
+                    _LOGGER.debug(
+                        "Connect attempt %d failed with %s: %s, retrying (elapsed %.1fs)",
+                        connect_attempt, type(ex).__name__, ex, time.monotonic() - connect_start,
+                    )
                     await asyncio.sleep(5)
+    _LOGGER.debug(
+        "Connect loop for %s ended: connected=%s, attempts=%d, elapsed=%.1fs",
+        address, connected, connect_attempt, time.monotonic() - connect_start,
+    )
     if not connected:
         raise ConfigEntryNotReady(f"Could not connect to {address}")
 
@@ -102,7 +117,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         security_pin=None if entry.data.get(CONF_PIN) is None else int(entry.data[CONF_PIN]),
     )
 
-    if not await coordinator.async_wait_ready():
+    wait_ready_start = time.monotonic()
+    ready = await coordinator.async_wait_ready()
+    _LOGGER.debug(
+        "coordinator.async_wait_ready() for %s returned %s after %.1fs",
+        address, ready, time.monotonic() - wait_ready_start,
+    )
+    if not ready:
         raise ConfigEntryNotReady(f"{address} is not advertising state")
 
     entry.async_on_unload(coordinator.async_start())

@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import time
 from typing import TYPE_CHECKING
 
 import async_timeout
@@ -107,14 +108,33 @@ class NukiDataUpdateCoordinator(ActiveBluetoothDataUpdateCoordinator[None]):
 
     async def async_wait_ready(self) -> bool:
         """Wait for the device to be ready."""
+        attempt = 0
+        start = time.monotonic()
         with contextlib.suppress(asyncio.TimeoutError):
             async with async_timeout.timeout(DEVICE_STARTUP_TIMEOUT):
                 while True:
+                    attempt += 1
+                    _LOGGER.debug(
+                        "async_wait_ready attempt %d (elapsed %.1fs)",
+                        attempt, time.monotonic() - start,
+                    )
                     try:
                         await self._async_update()
+                        _LOGGER.debug(
+                            "async_wait_ready succeeded on attempt %d (elapsed %.1fs)",
+                            attempt, time.monotonic() - start,
+                        )
                         return True
-                    except BleakError:
+                    except BleakError as ex:
+                        _LOGGER.debug(
+                            "async_wait_ready attempt %d failed with %s: %s (elapsed %.1fs)",
+                            attempt, type(ex).__name__, ex, time.monotonic() - start,
+                        )
                         await asyncio.sleep(5)
+        _LOGGER.debug(
+            "async_wait_ready gave up after %d attempt(s), elapsed %.1fs",
+            attempt, time.monotonic() - start,
+        )
         return False
 
     async def async_get_last_action_log_entry(self):
