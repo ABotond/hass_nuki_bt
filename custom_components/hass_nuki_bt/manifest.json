@@ -13,9 +13,9 @@
   "dependencies": [
     "bluetooth_adapters"
   ],
-  "documentation": "https://github.com/ronengr/hass_nuki_bt",
+  "documentation": "https://github.com/ABotond/hass_nuki_bt",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/ronengr/hass_nuki_bt/issues",
+  "issue_tracker": "https://github.com/ABotond/hass_nuki_bt/issues",
   "loggers": [
     "pyNukiBT"
   ],
