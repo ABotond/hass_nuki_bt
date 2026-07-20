@@ -9,7 +9,7 @@ import asyncio
 import contextlib
 import logging
 import time
-from asyncio import CancelledError, TimeoutError
+from asyncio import TimeoutError
 from bleak import BleakError
 import async_timeout
 
@@ -93,7 +93,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 try:
                     await device.connect()
                     connected = True
-                except (BleakError, CancelledError) as ex:
+                except BleakError as ex:
                     _LOGGER.debug(
                         "Connect attempt %d failed with %s: %s, retrying (elapsed %.1fs)",
                         connect_attempt, type(ex).__name__, ex, time.monotonic() - connect_start,

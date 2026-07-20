@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-from asyncio import CancelledError, TimeoutError
+from asyncio import TimeoutError
 
 import async_timeout
 from bleak import BleakError
@@ -76,7 +76,7 @@ class NukiEntity(PassiveBluetoothCoordinatorEntity[NukiDataUpdateCoordinator]):
                     try:
                         await self.device.lock_action(action, name_suffix=user_name, wait_for_completed=True)
                         break
-                    except (BleakError, CancelledError) as ex:
+                    except BleakError as ex:
                         _LOGGER.debug("Command failed, retrying: %s", ex)
                         await asyncio.sleep(5)
         await self.coordinator.async_get_last_action_log_entry()
