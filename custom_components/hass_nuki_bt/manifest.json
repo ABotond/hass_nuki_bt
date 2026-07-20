@@ -20,7 +20,7 @@
     "pyNukiBT"
   ],
   "requirements": [
-    "pyNukiBT @ git+https://github.com/ABotond/pyNukiBT.git@main"
+    "pyNukiBT @ git+https://github.com/ABotond/pyNukiBT.git@0.0.20"
   ],
   "version": "0.0.0"
 }
